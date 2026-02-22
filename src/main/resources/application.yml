@@ -33,33 +33,14 @@ spring:
                 trace: false
                 web-allow-others: false
 
-    # Email Configuration
-    mail:
-        host: ${MAIL_HOST:smtp.gmail.com}
-        port: ${MAIL_PORT:587}
-        username: ${MAIL_USERNAME:}
-        password: ${MAIL_PASSWORD:}
-        properties:
-            mail:
-                smtp:
-                    auth: true
-                    starttls:
-                        enable: true
-                        required: true
-                    ssl:
-                        protocols: TLSv1.2 TLSv1.3
-                        trust: ${MAIL_HOST:smtp.gmail.com}
-                    connectiontimeout: 5000
-                    timeout: 5000
-                    writetimeout: 5000
-                transport:
-                    protocol: smtp
-                debug: ${MAIL_DEBUG:true}
-
 # Email Configuration
 email:
-    from: ${EMAIL_FROM:noreply@license-service.com}
+    from: ${EMAIL_FROM:noreply@tradingia.lat}
     enabled: ${EMAIL_ENABLED:true}
+
+mailersend:
+    api-token: ${MAILERSEND_API_TOKEN:}
+    api-url: ${MAILERSEND_API_URL:https://api.mailersend.com/v1/email}
 
 # Scheduler Configuration
 scheduler:

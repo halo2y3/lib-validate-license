@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Spring Boot License Validation Library
 # Stage 1: Build the application
-FROM maven:3.9.6-eclipse-temurin-17 AS builder
+FROM maven:3.9-eclipse-temurin-25 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -16,13 +16,13 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Stage 2: Create the runtime image
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25-jre
 
 # Set working directory
 WORKDIR /app
 
 # Create a non-root user for security
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN groupadd -r spring && useradd -r -g spring spring
 
 # Copy the built JAR from builder stage
 COPY --from=builder /app/target/lib-validate-license-0.0.1-SNAPSHOT.jar app.jar
@@ -42,7 +42,13 @@ ENV SERVER_PORT=8199 \
     JWE_SECRET_KEY="" \
     JWE_EXPIRATION_SECONDS=3600 \
     JWE_ISSUER=lib-validate-license \
-    H2_CONSOLE_ENABLED=false
+    H2_CONSOLE_ENABLED=false \
+    EMAIL_FROM="" \
+    EMAIL_ENABLED=true \
+    MAILERSEND_API_TOKEN="" \
+    MAILERSEND_API_URL=https://api.mailersend.com/v1/email \
+    SCHEDULER_ENABLED=true \
+    SCHEDULER_CRON="0 0 9 * * ?"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

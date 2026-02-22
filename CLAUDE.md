@@ -17,7 +17,7 @@ This is a Spring Boot 3.4.4 license validation library that provides REST API en
 - Nimbus JOSE+JWT (JWE encryption)
 - Log4j2 (custom logging configuration)
 - JaCoCo (code coverage)
-- Spring Mail (HTML email templates)
+- MailerSend REST API (HTML email notifications)
 
 ## Build and Development Commands
 
@@ -147,20 +147,15 @@ The application implements a two-step license activation process (both require J
 - Supports migration to PostgreSQL, MySQL, or other RDBMS
 
 **Email Configuration**:
-- Supports HTML email templates for license notifications
-- Templates: `LicenseCreate.html` (creation) and `LicenseExpiration.html` (warning)
-- SMTP configuration required for email functionality
-- Default provider: Gmail (requires App Password with 2FA enabled)
+- Uses **MailerSend REST API** (no SMTP — `spring-boot-starter-mail` removed)
+- Endpoint: `POST https://api.mailersend.com/v1/email` with `Authorization: Bearer <token>`
+- `RestClient` bean configured in `MailerSendConfig` (`co.com.validate.license.config`)
+- HTML templates: `LicenseCreate.html` (creation) and `LicenseExpiration.html` (expiration warning)
 - Environment variables:
-  - `MAIL_HOST`: SMTP server host (default: smtp.gmail.com)
-  - `MAIL_PORT`: SMTP port (default: 587 for STARTTLS)
-  - `MAIL_USERNAME`: Email account username
-  - `MAIL_PASSWORD`: Email account password (use App Password for Gmail)
-  - `EMAIL_FROM`: Sender email address
-  - `EMAIL_ENABLED`: Enable/disable email notifications (default: true)
-  - `MAIL_DEBUG`: Enable detailed SMTP logs (default: false)
-- **SSL/TLS Configuration**: Enforces TLSv1.2 and TLSv1.3 for security
-- See `application-email-examples.yml` for provider-specific configurations
+  - `MAILERSEND_API_TOKEN`: API token from MailerSend dashboard (required in production)
+  - `MAILERSEND_API_URL`: REST endpoint (default: `https://api.mailersend.com/v1/email`)
+  - `EMAIL_FROM`: Sender address — must be a verified domain in MailerSend
+  - `EMAIL_ENABLED`: Enable/disable email notifications (default: `true`)
 
 ## JWE Token Usage Examples
 
@@ -205,8 +200,9 @@ curl -X POST http://localhost:8199/api/license/activate \
 - **HWID Binding**: Once a license is activated with a specific HWID, it cannot be used on a different machine
 - **First Activation**: The first activation sets `hwid` and `active=true`
 - **CORS**: Configured to allow all origins - consider restricting in production
-- **Database**: No embedded database configured; external DB connection required
+- **Database**: H2 embedded database by default; supports migration to PostgreSQL/MySQL
 - **Lombok**: Extensive use of Lombok annotations (`@Getter`, `@Setter`, `@Slf4j`, `@Generated`)
+- **Email**: Non-blocking — email failures are logged but do not interrupt license operations
 
 ## Testing
 
@@ -217,6 +213,7 @@ curl -X POST http://localhost:8199/api/license/activate \
 - `JweAuthenticationFilterTest`: Tests authentication filter with mock requests
 - `AuthControllerTest`: Tests token generation endpoint
 - `LicenseRestControllerTest`: Tests license creation and activation endpoints
+- `EmailServiceTest`: Tests MailerSend REST calls using `@Mock(answer = Answers.RETURNS_DEEP_STUBS) RestClient`
 
 **Integration Tests** (`src/test/java/integration/*Test.java`):
 - `LicenseIntegrationTest`: End-to-end tests covering complete workflows
@@ -231,6 +228,7 @@ curl -X POST http://localhost:8199/api/license/activate \
 - **Test Profiles**: Uses `@ActiveProfiles("test")` to load test-specific configuration
 - **JWE Secret**: Test secret key is exactly 32 characters for AES-256-GCM encryption
 - **Security**: Spring Security Test provides `@WithMockUser` for authenticated contexts
+- **MailerSend**: Test uses `api-token: test-token` — no real HTTP calls are made
 
 ### Running Specific Tests
 

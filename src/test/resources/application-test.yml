@@ -15,9 +15,6 @@ spring:
   h2:
     console:
       enabled: false
-  mail:
-    host: localhost
-    port: 3025
 
 security:
   jwe:
@@ -28,6 +25,10 @@ security:
 email:
   enabled: false
   from: test@test.com
+
+mailersend:
+  api-token: test-token
+  api-url: https://api.mailersend.com/v1/email
 
 scheduler:
   expiration-warning:

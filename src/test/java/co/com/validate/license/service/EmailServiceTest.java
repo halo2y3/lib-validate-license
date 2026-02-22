@@ -1,7 +1,7 @@
 package co.com.validate.license.service;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -9,29 +9,26 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 
-import jakarta.mail.Session;
-import jakarta.mail.internet.MimeMessage;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.RestClient;
 
 @ExtendWith(MockitoExtension.class)
 class EmailServiceTest {
 
-    @Mock
-    private JavaMailSender mailSender;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private RestClient mailerSendRestClient;
 
     private EmailService emailService;
 
     @BeforeEach
     void setUp() {
-        emailService = new EmailService(mailSender);
+        emailService = new EmailService(mailerSendRestClient);
         ReflectionTestUtils.setField(emailService, "fromEmail", "test@test.com");
     }
 
@@ -43,15 +40,11 @@ class EmailServiceTest {
         String licenseKey = "TEST-LICENSE-123";
         LocalDate expirationDate = LocalDate.now().plusDays(365);
 
-        // Mock MimeMessage creation
-        MimeMessage mimeMessage = new MimeMessage((Session) null);
-        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
-
         // Act
         emailService.sendLicenseCreationEmail(email, licenseKey, expirationDate);
 
         // Assert
-        verify(mailSender, times(1)).send(any(MimeMessage.class));
+        verify(mailerSendRestClient, times(1)).post();
     }
 
     @Test
@@ -66,8 +59,7 @@ class EmailServiceTest {
         emailService.sendLicenseCreationEmail(email, licenseKey, expirationDate);
 
         // Assert
-        verify(mailSender, never()).send(any(MimeMessage.class));
-        verify(mailSender, never()).createMimeMessage();
+        verify(mailerSendRestClient, never()).post();
     }
 
     @Test
@@ -78,18 +70,15 @@ class EmailServiceTest {
         String licenseKey = "TEST-LICENSE-123";
         LocalDate expirationDate = LocalDate.now().plusDays(365);
 
-        // Mock MimeMessage creation
-        MimeMessage mimeMessage = new MimeMessage((Session) null);
-        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
-
-        doThrow(new RuntimeException("Mail server error"))
-            .when(mailSender).send(any(MimeMessage.class));
+        when(mailerSendRestClient.post().body(any()).retrieve().toBodilessEntity())
+                .thenThrow(new RuntimeException("Mail server error"));
+        clearInvocations(mailerSendRestClient);
 
         // Act - should not throw exception
         emailService.sendLicenseCreationEmail(email, licenseKey, expirationDate);
 
         // Assert - exception was caught and logged
-        verify(mailSender, times(1)).send(any(MimeMessage.class));
+        verify(mailerSendRestClient, times(1)).post();
     }
 
     @Test
@@ -100,15 +89,11 @@ class EmailServiceTest {
         String licenseKey = "TEST-LICENSE-123";
         LocalDate expirationDate = LocalDate.now().plusDays(1);
 
-        // Mock MimeMessage creation
-        MimeMessage mimeMessage = new MimeMessage((Session) null);
-        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
-
         // Act
         emailService.sendLicenseExpirationWarning(email, licenseKey, expirationDate);
 
         // Assert
-        verify(mailSender, times(1)).send(any(MimeMessage.class));
+        verify(mailerSendRestClient, times(1)).post();
     }
 
     @Test
@@ -123,8 +108,7 @@ class EmailServiceTest {
         emailService.sendLicenseExpirationWarning(email, licenseKey, expirationDate);
 
         // Assert
-        verify(mailSender, never()).send(any(MimeMessage.class));
-        verify(mailSender, never()).createMimeMessage();
+        verify(mailerSendRestClient, never()).post();
     }
 
     @Test
@@ -135,17 +119,14 @@ class EmailServiceTest {
         String licenseKey = "TEST-LICENSE-123";
         LocalDate expirationDate = LocalDate.now().plusDays(1);
 
-        // Mock MimeMessage creation
-        MimeMessage mimeMessage = new MimeMessage((Session) null);
-        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
-
-        doThrow(new RuntimeException("Mail server error"))
-            .when(mailSender).send(any(MimeMessage.class));
+        when(mailerSendRestClient.post().body(any()).retrieve().toBodilessEntity())
+                .thenThrow(new RuntimeException("Mail server error"));
+        clearInvocations(mailerSendRestClient);
 
         // Act - should not throw exception
         emailService.sendLicenseExpirationWarning(email, licenseKey, expirationDate);
 
         // Assert - exception was caught and logged
-        verify(mailSender, times(1)).send(any(MimeMessage.class));
+        verify(mailerSendRestClient, times(1)).post();
     }
 }
