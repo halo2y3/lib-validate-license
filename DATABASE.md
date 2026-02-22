@@ -141,6 +141,27 @@ java -jar target/lib-validate-license-0.0.1-SNAPSHOT.jar \
 
 ### Backup H2 Database
 
+The application includes an **automatic backup** system that creates a compressed H2 snapshot and uploads it to **Cloudflare R2** on a configurable schedule.
+
+**Required environment variables:**
+
+```bash
+BACKUP_ENABLED=true
+BACKUP_RUN_ON_STARTUP=true       # run a backup on startup
+BACKUP_CRON=0 0 1 * * ?          # daily at 1:00 AM
+BACKUP_LOCAL_DIR=/app/data/backups
+BACKUP_MAX_FILES=7               # backups to retain in R2
+
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key-id
+R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+R2_BUCKET_NAME=licenses-backup
+```
+
+Backup files are named `licenses-yyyyMMdd-HHmmss.zip`. Only the `BACKUP_MAX_FILES` most recent files are kept in R2.
+
+**Manual local backup (fallback):**
+
 ```bash
 # Backup
 cp -r data/ data_backup_$(date +%Y%m%d)/
@@ -148,6 +169,8 @@ cp -r data/ data_backup_$(date +%Y%m%d)/
 # Restore
 cp -r data_backup_20260123/ data/
 ```
+
+See [README.md](README.md#backup-configuration) for full Cloudflare R2 setup instructions.
 
 ### Migration from H2 to Production DB
 
@@ -252,7 +275,7 @@ SELECT COUNT(*) FROM license WHERE expiration_date < CURRENT_DATE;
 
 1. **Never use H2 console in production** - Disable in prod profile
 2. **Use environment variables** for sensitive credentials
-3. **Regular backups** - Automate database backups
+3. **Regular backups** - Automated via Cloudflare R2 (`BACKUP_ENABLED=true`)
 4. **Monitor disk space** - H2 grows with data
 5. **Connection pooling** - Configure HikariCP for production
 6. **Indexes** - Add indexes for frequently queried fields
