@@ -88,7 +88,6 @@ public class LicenseRestController {
             licenseRepository.save(lic);
         }
 
-        // Validaciones
         if (!lic.getHwid().equals(licenseRequest.getHwid())) {
         	licenseResponse.setDescription("Licencia usada en otro PC");
             return ResponseEntity.status(403).body(licenseResponse);

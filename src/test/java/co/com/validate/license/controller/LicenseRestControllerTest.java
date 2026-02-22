@@ -35,13 +35,16 @@ class LicenseRestControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @SuppressWarnings("removal")
+	@MockBean
     private LicenseRepository licenseRepository;
 
-    @MockBean
+    @SuppressWarnings("removal")
+	@MockBean
     private JweService jweService;
 
-    @MockBean
+    @SuppressWarnings("removal")
+	@MockBean
     private EmailService emailService;
 
     @Test

@@ -53,20 +53,9 @@ public class LicenseExpirationScheduler {
             int failureCount = 0;
 
             for (License license : expiringLicenses) {
-                try {
-                    log.info("Sending expiration warning for license: {} to email: {}",
-                            license.getLicenseKey(), license.getEmail());
-
-                    emailService.sendLicenseExpirationWarning(
-                        license.getEmail(),
-                        license.getLicenseKey(),
-                        license.getExpirationDate()
-                    );
-
+                if (sendExpirationWarning(license)) {
                     successCount++;
-                } catch (Exception e) {
-                    log.error("Failed to process expiration warning for license: {}. Error: {}",
-                            license.getLicenseKey(), e.getMessage(), e);
+                } else {
                     failureCount++;
                 }
             }
@@ -75,6 +64,25 @@ public class LicenseExpirationScheduler {
 
         } catch (Exception e) {
             log.error("Error executing scheduled task for license expiration check", e);
+        }
+    }
+
+    private boolean sendExpirationWarning(License license) {
+        try {
+            log.info("Sending expiration warning for license: {} to email: {}",
+                    license.getLicenseKey(), license.getEmail());
+
+            emailService.sendLicenseExpirationWarning(
+                license.getEmail(),
+                license.getLicenseKey(),
+                license.getExpirationDate()
+            );
+
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to process expiration warning for license: {}. Error: {}",
+                    license.getLicenseKey(), e.getMessage(), e);
+            return false;
         }
     }
 }

@@ -102,7 +102,6 @@ class LicenseExpirationSchedulerTest {
     void testCheckExpiringLicenses_SchedulerDisabled() {
         // Arrange
         ReflectionTestUtils.setField(scheduler, "schedulerEnabled", false);
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
 
         // Act
         scheduler.checkExpiringLicenses();
