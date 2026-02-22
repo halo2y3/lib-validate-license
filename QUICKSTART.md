@@ -93,7 +93,7 @@ curl -X POST http://localhost:8199/api/license/create \
 }
 ```
 
-**Note**: In development, email sending is disabled by default. To enable it, configure SMTP settings in `.env` file.
+**Note**: Email sending requires a MailerSend API token. Set `MAILERSEND_API_TOKEN` and `EMAIL_FROM` in your `.env` file to enable it. Copy `.env.example` as a starting point.
 
 ### Activate the License
 
