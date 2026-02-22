@@ -1,0 +1,1337 @@
+{
+	"info": {
+		"_postman_id": "license-validation-service",
+		"name": "License Validation Service",
+		"description": "REST API for managing and validating software licenses with JWE (JSON Web Encryption) authentication.\n\n## Features\n- **JWE Token Authentication**: Secure encrypted tokens using Nimbus JOSE+JWT\n- **Hardware-based License Binding**: Licenses tied to specific machine HWIDs\n- **License Expiration Management**: Configurable validity periods\n- **First-use Activation**: Automatic HWID binding on first activation\n- **Email Notifications**: Automatic email sending on license creation\n\n## Architecture\n- **Technology Stack**: Spring Boot 2.4.5, Java 17, Spring Security, H2 Database\n- **Encryption**: Direct Encryption (DIR) with AES-256-GCM\n- **Default Port**: 8199 (configurable via SERVER_PORT env var)\n- **Test Coverage**: 90% (32 tests)\n\n## Getting Started\n1. Start the service:\n   - Local: `mvn spring-boot:run`\n   - Docker: `docker-compose up -d`\n2. Generate a token using \"Generate Auth Token\" (no auth required)\n3. Token will be automatically saved to environment variable\n4. Use other requests with automatic Bearer token authentication\n5. Tokens expire after 1 hour by default (configurable)\n\n## Security Notes\n⚠️ Change JWE_SECRET_KEY in production (minimum 32 characters)\n⚠️ All /api/license/** endpoints require valid JWE token\n⚠️ Tokens are stateless and validated on each request\n\n## Environment Variables Required\nSet these in your Postman environment:\n- `base_url`: http://localhost:8199 (default)\n- `auth_token`: Auto-populated by \"Generate Auth Token\"\n- `license_key`: Auto-populated by \"Create License\"\n- `test_hwid`: Auto-populated by \"Activate License\"",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"version": "2.0.0"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Generate Auth Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Test response status",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Test response structure",
+									"pm.test(\"Response has required fields\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('token');",
+									"    pm.expect(jsonData).to.have.property('type');",
+									"    pm.expect(jsonData).to.have.property('subject');",
+									"});",
+									"",
+									"// Test token type",
+									"pm.test(\"Token type is Bearer\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.type).to.eql('Bearer');",
+									"});",
+									"",
+									"// Test subject matches request",
+									"pm.test(\"Subject matches request\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.subject).to.eql(requestBody.subject);",
+									"});",
+									"",
+									"// Save token to environment",
+									"var jsonData = pm.response.json();",
+									"pm.environment.set(\"auth_token\", jsonData.token);",
+									"console.log(\"Token saved to environment:\", jsonData.token.substring(0, 50) + \"...\");",
+									"",
+									"// Test token format (JWE has 5 parts)",
+									"pm.test(\"Token has valid JWE format\", function () {",
+									"    var parts = jsonData.token.split('.');",
+									"    pm.expect(parts.length).to.eql(5);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"subject\": \"postman-test-client\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"token"
+							]
+						},
+						"description": "Generate a JWE authentication token.\n\n**Authentication:** None required\n\n**Request Body:**\n- `subject` (string, required, non-empty): Client identifier (e.g., application name, user ID)\n\n**Response (200 OK):**\n```json\n{\n  \"token\": \"eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..qR8xP3kZWmJ8YLbr.U4_L9Xm2oQ5h3K1v.8sY7N6mP4kZ2J1t\",\n  \"type\": \"Bearer\",\n  \"subject\": \"postman-test-client\"\n}\n```\n\n**JWE Token Structure:**\n- 5 parts separated by dots (different from JWT's 3 parts)\n- Part 1: JWE Header (algorithm and encryption)\n- Part 2: Empty (Direct Encryption)\n- Part 3: Initialization Vector\n- Part 4: Ciphertext\n- Part 5: Authentication Tag\n\n**Token Properties:**\n- Expiration: 3600 seconds (1 hour) by default\n- Issuer: lib-validate-license\n- Encrypted payload includes: subject, issued-at, expiration\n- Stateless: No server-side session storage\n\n**Usage:**\n1. Generate token with this endpoint\n2. Include in Authorization header: `Bearer <token>`\n3. Use for all `/api/license/**` endpoints\n4. Token automatically saved to `auth_token` environment variable\n\n**Error Responses:**\n- 400 Bad Request: Empty or missing subject"
+					},
+					"response": [
+						{
+							"name": "Success - Token Generated",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"subject\": \"postman-test-client\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/auth/token",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"token"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"token\": \"eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..qR8xP3kZWmJ8YLbr.U4_L9Xm2oQ5h3K1v.8sY7N6mP4kZ2J1t\",\n    \"type\": \"Bearer\",\n    \"subject\": \"postman-test-client\"\n}"
+						},
+						{
+							"name": "Error - Empty Subject",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"subject\": \"\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/auth/token",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"token"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"timestamp\": \"2026-01-29T10:30:00.000+00:00\",\n    \"message\": \"Validation failed\",\n    \"details\": \"subject: must not be empty\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Generate Token - Empty Subject (Negative Test)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response indicates validation error\", function () {",
+									"    pm.response.to.be.badRequest;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"subject\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"token"
+							]
+						},
+						"description": "Negative test: Attempt to generate token with empty subject.\n\nExpected: 400 Bad Request"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for generating JWE tokens.\n\n**JWE Configuration:**\n- Algorithm: Direct Encryption (DIR)\n- Encryption: AES-256-GCM\n- Default Expiration: 3600 seconds (1 hour)\n- Issuer: lib-validate-license\n- Secret Key: Configurable via JWE_SECRET_KEY (minimum 32 chars)"
+		},
+		{
+			"name": "License Management",
+			"item": [
+				{
+					"name": "Create License",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"License created successfully\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('licenseKey');",
+									"    pm.expect(jsonData).to.have.property('expirationDate');",
+									"    pm.expect(jsonData).to.have.property('active');",
+									"});",
+									"",
+									"pm.test(\"License key matches request\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.licenseKey).to.eql(requestBody.licenseKey);",
+									"});",
+									"",
+									"pm.test(\"License is initially inactive\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.active).to.be.false;",
+									"});",
+									"",
+									"pm.test(\"Expiration date is in the future\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var expirationDate = new Date(jsonData.expirationDate);",
+									"    var now = new Date();",
+									"    pm.expect(expirationDate.getTime()).to.be.above(now.getTime());",
+									"});",
+									"",
+									"// Save license key for subsequent requests",
+									"var jsonData = pm.response.json();",
+									"pm.environment.set(\"license_key\", jsonData.licenseKey);",
+									"console.log(\"License key saved:\", jsonData.licenseKey);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"POSTMAN-TEST-{{$randomInt}}\",\n    \"email\": \"test@example.com\",\n    \"validDays\": 365\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"create"
+							]
+						},
+						"description": "Create a new license.\n\n**Authentication:** Required (Bearer token)\n\n**Request Body:**\n- `licenseKey` (string, required): Unique license key (must not exist in database)\n- `email` (string, required): Email address to receive license notification\n- `validDays` (integer, required): Number of days the license is valid (e.g., 365 for 1 year)\n\n**Response (200 OK):**\n```json\n{\n  \"id\": 1,\n  \"licenseKey\": \"POSTMAN-TEST-12345\",\n  \"email\": \"test@example.com\",\n  \"expirationDate\": \"2027-01-29T10:30:00\",\n  \"active\": false,\n  \"hwid\": null\n}\n```\n\n**Business Rules:**\n- License is created in **inactive** state (active=false)\n- HWID is null until first activation\n- Expiration date = current date + validDays\n- License key must be unique (400 error if duplicate)\n- Email notification sent automatically on creation\n\n**Error Responses:**\n- 400 Bad Request: Duplicate license key or validation error\n- 401 Unauthorized: Missing or invalid JWE token\n- 500 Internal Server Error: Database or email service error"
+					},
+					"response": [
+						{
+							"name": "Success - License Created",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..."
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"POSTMAN-TEST-12345\",\n    \"email\": \"test@example.com\",\n    \"validDays\": 365\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/create",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"create"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"id\": 1,\n    \"licenseKey\": \"POSTMAN-TEST-12345\",\n    \"email\": \"test@example.com\",\n    \"expirationDate\": \"2027-01-29T10:30:00.000+00:00\",\n    \"active\": false,\n    \"hwid\": null\n}"
+						},
+						{
+							"name": "Error - Duplicate License Key",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..."
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"DUPLICATE-TEST\",\n    \"email\": \"duplicate@example.com\",\n    \"validDays\": 365\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/create",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"create"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"timestamp\": \"2026-01-29T10:30:00.000+00:00\",\n    \"message\": \"La llave de licencia ya existe\",\n    \"details\": \"licenseKey: DUPLICATE-TEST\"\n}"
+						},
+						{
+							"name": "Error - Unauthorized (No Token)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"TEST-NO-AUTH\",\n    \"email\": \"noauth@example.com\",\n    \"validDays\": 365\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/create",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"create"
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"error\": \"Unauthorized\",\n    \"message\": \"Token de autenticación inválido o ausente\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Create License - Duplicate Key (Negative Test)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Error message indicates duplicate\", function () {",
+									"    pm.response.to.be.badRequest;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// This test assumes a license with key 'DUPLICATE-TEST' already exists"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"DUPLICATE-TEST\",\n    \"email\": \"duplicate@example.com\",\n    \"validDays\": 365\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"create"
+							]
+						},
+						"description": "Negative test: Attempt to create license with duplicate key.\n\nRun this after creating a license with key 'DUPLICATE-TEST'.\n\nExpected: 400 Bad Request"
+					},
+					"response": []
+				},
+				{
+					"name": "Create License - No Auth (Negative Test)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response indicates authentication required\", function () {",
+									"    pm.response.to.be.unauthorized;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"TEST-NO-AUTH\",\n    \"email\": \"noauth@example.com\",\n    \"validDays\": 365\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"create"
+							]
+						},
+						"description": "Negative test: Attempt to create license without authentication.\n\nExpected: 401 Unauthorized"
+					},
+					"response": []
+				},
+				{
+					"name": "Activate License (First Time)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Activation successful\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('description');",
+									"    pm.expect(jsonData).to.have.property('expirationDate');",
+									"});",
+									"",
+									"pm.test(\"Description is LICENCIA_OK\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.description).to.eql('LICENCIA_OK');",
+									"});",
+									"",
+									"pm.test(\"Expiration date exists\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.expirationDate).to.not.be.null;",
+									"});",
+									"",
+									"// Save HWID for subsequent tests",
+									"var requestBody = JSON.parse(pm.request.body.raw);",
+									"pm.environment.set(\"test_hwid\", requestBody.hwid);",
+									"console.log(\"HWID saved:\", requestBody.hwid);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"{{license_key}}\",\n    \"hwid\": \"POSTMAN-PC-{{$randomInt}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"activate"
+							]
+						},
+						"description": "Activate a license (first time or reactivation).\n\n**Authentication:** Required (Bearer token)\n\n**Request Body:**\n- `licenseKey` (string, required): License key to activate\n- `hwid` (string, required): Hardware ID of the machine\n\n**First Activation (when license.active = false):**\n- Binds license to the provided HWID permanently\n- Sets `active` to true\n- License can ONLY be used on this HWID from now on\n- No way to unbind or transfer to different HWID\n\n**Reactivation (when license.active = true):**\n- Validates that provided HWID matches the bound HWID\n- Returns 403 if HWID doesn't match (\"Licencia usada en otro PC\")\n- Checks if license is expired\n\n**Response (200 OK):**\n```json\n{\n  \"description\": \"LICENCIA_OK\",\n  \"expirationDate\": \"2027-01-29T10:30:00\"\n}\n```\n\n**Error Responses:**\n- 401 Unauthorized: Missing or invalid JWE token\n- 403 Forbidden (\"Licencia no existe\"): License key not found\n- 403 Forbidden (\"Licencia usada en otro PC\"): HWID mismatch\n- 403 Forbidden (\"Licencia vencida\"): License expired\n\n**Use Cases:**\n- First activation: Application installation on new machine\n- Reactivation: Application startup validation on same machine\n- Failed activation: Prevent license sharing across multiple machines"
+					},
+					"response": [
+						{
+							"name": "Success - First Activation",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..."
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"POSTMAN-TEST-12345\",\n    \"hwid\": \"POSTMAN-PC-67890\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/activate",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"activate"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"description\": \"LICENCIA_OK\",\n    \"expirationDate\": \"2027-01-29T10:30:00.000+00:00\"\n}"
+						},
+						{
+							"name": "Success - Reactivation (Same HWID)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..."
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"POSTMAN-TEST-12345\",\n    \"hwid\": \"POSTMAN-PC-67890\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/activate",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"activate"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"description\": \"LICENCIA_OK\",\n    \"expirationDate\": \"2027-01-29T10:30:00.000+00:00\"\n}"
+						},
+						{
+							"name": "Error - License Not Found",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..."
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"NONEXISTENT-KEY\",\n    \"hwid\": \"ANY-HWID\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/activate",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"activate"
+									]
+								}
+							},
+							"status": "Forbidden",
+							"code": 403,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"description\": \"Licencia no existe\",\n    \"expirationDate\": null\n}"
+						},
+						{
+							"name": "Error - Wrong HWID (Different Machine)",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..."
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"POSTMAN-TEST-12345\",\n    \"hwid\": \"DIFFERENT-PC-99999\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/activate",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"activate"
+									]
+								}
+							},
+							"status": "Forbidden",
+							"code": 403,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"description\": \"Licencia usada en otro PC\",\n    \"expirationDate\": null\n}"
+						},
+						{
+							"name": "Error - Expired License",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..."
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"licenseKey\": \"EXPIRED-LICENSE\",\n    \"hwid\": \"POSTMAN-PC-67890\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/license/activate",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"license",
+										"activate"
+									]
+								}
+							},
+							"status": "Forbidden",
+							"code": 403,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"description\": \"Licencia vencida\",\n    \"expirationDate\": \"2025-01-29T10:30:00.000+00:00\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Activate License (Reactivation - Same HWID)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Reactivation successful\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.description).to.eql('LICENCIA_OK');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"{{license_key}}\",\n    \"hwid\": \"{{test_hwid}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"activate"
+							]
+						},
+						"description": "Reactivate a license with the same HWID.\n\nThis simulates checking the license validity on the same machine.\n\nExpected: 200 OK with LICENCIA_OK"
+					},
+					"response": []
+				},
+				{
+					"name": "Activate License - Wrong HWID (Negative Test)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403 Forbidden\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test(\"Error indicates license used on another PC\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.description).to.include('otro PC');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"{{license_key}}\",\n    \"hwid\": \"DIFFERENT-PC-12345\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"activate"
+							]
+						},
+						"description": "Negative test: Attempt to activate license with different HWID.\n\nThis simulates trying to use the license on a different machine.\n\nExpected: 403 Forbidden with \"Licencia usada en otro PC\""
+					},
+					"response": []
+				},
+				{
+					"name": "Activate License - Nonexistent Key (Negative Test)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403 Forbidden\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test(\"Error indicates license does not exist\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.description).to.include('no existe');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"NONEXISTENT-KEY-999\",\n    \"hwid\": \"ANY-HWID\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"activate"
+							]
+						},
+						"description": "Negative test: Attempt to activate nonexistent license.\n\nExpected: 403 Forbidden with \"Licencia no existe\""
+					},
+					"response": []
+				}
+			],
+			"description": "License creation and activation endpoints"
+		},
+		{
+			"name": "Health & Monitoring",
+			"item": [
+				{
+					"name": "Health Check (if actuator enabled)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Service is healthy\", function () {",
+									"    if (pm.response.code === 200) {",
+									"        pm.response.to.have.status(200);",
+									"        console.log(\"✓ Service is running and healthy\");",
+									"    } else if (pm.response.code === 404) {",
+									"        console.log(\"⚠ Health endpoint not available (Spring Actuator may not be enabled)\");",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/actuator/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Check if the service is running and healthy.\n\n**Note:** This endpoint requires Spring Boot Actuator to be enabled.\n\nIf not available (404), the service is still running if other endpoints work."
+					},
+					"response": []
+				},
+				{
+					"name": "H2 Console (if enabled)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/h2-console",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"h2-console"
+							]
+						},
+						"description": "Access H2 database console for debugging.\n\n**Configuration:**\n- JDBC URL: `jdbc:h2:file:./data/licenses`\n- Username: (default empty)\n- Password: (default empty)\n\n**Note:** In production, set `H2_CONSOLE_ENABLED=false`\n\n**Security Warning:** Never expose H2 console in production!"
+					},
+					"response": []
+				}
+			],
+			"description": "Health checks and monitoring endpoints"
+		},
+		{
+			"name": "Complete Workflow Test",
+			"item": [
+				{
+					"name": "Step 1 - Generate Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"✓ Token generated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.token).to.not.be.empty;",
+									"    pm.environment.set(\"workflow_token\", jsonData.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"subject\": \"workflow-test-{{$timestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 2 - Create License",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"✓ License created successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.licenseKey).to.not.be.empty;",
+									"    pm.environment.set(\"workflow_license_key\", jsonData.licenseKey);",
+									"    pm.expect(jsonData.active).to.be.false;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{workflow_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"WORKFLOW-{{$timestamp}}\",\n    \"email\": \"workflow@example.com\",\n    \"validDays\": 365\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 3 - Activate License",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"✓ License activated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.description).to.eql('LICENCIA_OK');",
+									"    pm.environment.set(\"workflow_hwid\", \"WORKFLOW-PC-\" + Date.now());",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{workflow_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"{{workflow_license_key}}\",\n    \"hwid\": \"WORKFLOW-PC-{{$timestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"activate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 4 - Verify Reactivation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"✓ Reactivation successful on same HWID\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.description).to.eql('LICENCIA_OK');",
+									"});",
+									"",
+									"console.log(\"✅ Complete workflow test passed!\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{workflow_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenseKey\": \"{{workflow_license_key}}\",\n    \"hwid\": \"WORKFLOW-PC-{{$timestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/license/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"license",
+								"activate"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Complete workflow from token generation to license activation.\n\nRun these requests in sequence using \"Run collection\" or Collection Runner."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"// Add any global setup here"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"// Add any global assertions here"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8199",
+			"type": "string",
+			"description": "Base URL of the license validation service"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string",
+			"description": "JWE authentication token (auto-populated by Generate Auth Token request)"
+		},
+		{
+			"key": "license_key",
+			"value": "",
+			"type": "string",
+			"description": "License key (auto-populated by Create License request)"
+		},
+		{
+			"key": "test_hwid",
+			"value": "",
+			"type": "string",
+			"description": "Hardware ID for testing (auto-populated by Activate License request)"
+		},
+		{
+			"key": "workflow_token",
+			"value": "",
+			"type": "string",
+			"description": "Token for workflow tests (auto-populated)"
+		},
+		{
+			"key": "workflow_license_key",
+			"value": "",
+			"type": "string",
+			"description": "License key for workflow tests (auto-populated)"
+		},
+		{
+			"key": "workflow_hwid",
+			"value": "",
+			"type": "string",
+			"description": "HWID for workflow tests (auto-populated)"
+		}
+	]
+}

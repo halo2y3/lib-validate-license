@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="info">
+    <Properties>
+        <Property name="baseDir">/logs/redebanConexionDirectaEncrypt/</Property>
+        <Property name="applicationName">redebanConexionDirectaEncrypt</Property>
+        <Property name="LOG_PATTERN">[%tn,%tid] [%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}] [%p{lowerCase=false}] [%c{1.}] [%M]:   %m%n</Property>
+    </Properties>
+    <Appenders>
+    
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+        
+        <RollingFile name="RollingFile" fileName="${baseDir}/${applicationName}.log" 
+        	filePattern="${baseDir}/%d{yyyy-MM-dd}/${applicationName}.%d{yyyy-MM-dd-HH}.log">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" />
+            </Policies>
+            <DefaultRolloverStrategy max="1" />
+        </RollingFile>
+        <Async name="Async">
+            <AppenderRef ref="RollingFile"/>
+        </Async>
+    </Appenders>
+    <Loggers>
+
+		<logger name="co.com.tucompra.client" level="INFO" />
+		<logger name="co.com.tucompra.config" level="INFO" />
+        <logger name="co.com.tucompra.controller" level="INFO" />
+        <logger name="org.springframework" level="INFO" />
+        <logger name="org.springframework.data" level="INFO" />
+        <logger name="org.springframework.transaction" level="INFO" />
+        <logger name="org.springframework.security" level="INFO" />
+        <logger name="org.springframework.web.servlet.mvc" level="INFO" />
+		<logger name="org.hibernate.engine.internal.StatisticalLoggingSessionEventListener" level="ERROR" />
+		<logger name="com.netflix.discovery.shared.resolver.aws.ConfigClusterResolver" level="ERROR" />
+        
+        <Root level="info">
+            <AppenderRef ref="Async"/>
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>

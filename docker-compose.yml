@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  license-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lib-validate-license
+    ports:
+      - "8199:8199"
+    environment:
+      # Server configuration
+      - SERVER_PORT=8199
+      - SPRING_PROFILES_ACTIVE=prod
+
+      # JWE Security configuration (REQUIRED - change in production!)
+      - JWE_SECRET_KEY=change-this-secret-key-in-production-min-32-chars
+      - JWE_EXPIRATION_SECONDS=3600
+      - JWE_ISSUER=lib-validate-license
+
+      # H2 Database configuration
+      - H2_CONSOLE_ENABLED=false
+
+      # Optional: JVM memory settings
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    volumes:
+      # Persist H2 database data
+      - license-data:/app/data
+      # Optional: external log directory
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8199/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+    networks:
+      - license-network
+
+volumes:
+  license-data:
+    driver: local
+
+networks:
+  license-network:
+    driver: bridge

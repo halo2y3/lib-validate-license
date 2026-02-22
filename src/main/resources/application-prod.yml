@@ -1,0 +1,35 @@
+spring:
+  # Production Database Configuration
+  datasource:
+    url: ${DATABASE_URL:jdbc:h2:file:./data/licenses}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    username: ${DATABASE_USERNAME:sa}
+    password: ${DATABASE_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Use 'validate' in production, never 'update'
+    show-sql: false
+
+  # Disable H2 Console in production
+  h2:
+    console:
+      enabled: false
+
+security:
+  jwe:
+    secret-key: ${JWE_SECRET_KEY}  # REQUIRED: Must be set via environment variable
+    expiration-seconds: ${JWE_EXPIRATION_SECONDS:3600}
+    issuer: ${JWE_ISSUER:lib-validate-license}
+
+# Logging configuration for production
+logging:
+  level:
+    root: WARN
+    co.com.validate.license: INFO
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %msg%n'
+  file:
+    name: logs/license-service.log
+    max-size: 10MB
+    max-history: 30

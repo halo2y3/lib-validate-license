@@ -1,0 +1,34 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  h2:
+    console:
+      enabled: false
+  mail:
+    host: localhost
+    port: 3025
+
+security:
+  jwe:
+    secret-key: 12345678901234567890123456789012
+    expiration-seconds: 3600
+    issuer: test-issuer
+
+email:
+  enabled: false
+  from: test@test.com
+
+scheduler:
+  expiration-warning:
+    enabled: false

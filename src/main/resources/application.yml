@@ -1,0 +1,75 @@
+server:
+  port: ${SERVER_PORT:8199}
+
+spring:
+    application:
+        name: lib-validate-license
+    info:
+        build:
+            encoding: UTF-8
+
+    # H2 Embedded Database Configuration
+    datasource:
+        url: jdbc:h2:file:./data/licenses;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
+        driver-class-name: org.h2.Driver
+        username: sa
+        password:
+
+    jpa:
+        database-platform: org.hibernate.dialect.H2Dialect
+        hibernate:
+            ddl-auto: update
+        show-sql: false
+        properties:
+            hibernate:
+                format_sql: true
+
+    # H2 Console Configuration (accessible at /h2-console)
+    h2:
+        console:
+            enabled: ${H2_CONSOLE_ENABLED:true}
+            path: /h2-console
+            settings:
+                trace: false
+                web-allow-others: false
+
+    # Email Configuration
+    mail:
+        host: ${MAIL_HOST:smtp.gmail.com}
+        port: ${MAIL_PORT:587}
+        username: ${MAIL_USERNAME:}
+        password: ${MAIL_PASSWORD:}
+        properties:
+            mail:
+                smtp:
+                    auth: true
+                    starttls:
+                        enable: true
+                        required: true
+                    ssl:
+                        protocols: TLSv1.2 TLSv1.3
+                        trust: ${MAIL_HOST:smtp.gmail.com}
+                    connectiontimeout: 5000
+                    timeout: 5000
+                    writetimeout: 5000
+                transport:
+                    protocol: smtp
+                debug: ${MAIL_DEBUG:true}
+
+# Email Configuration
+email:
+    from: ${EMAIL_FROM:noreply@license-service.com}
+    enabled: ${EMAIL_ENABLED:true}
+
+# Scheduler Configuration
+scheduler:
+    expiration-warning:
+        enabled: ${SCHEDULER_ENABLED:true}
+        cron: ${SCHEDULER_CRON:0 0 9 * * ?}  # Daily at 9:00 AM
+
+security:
+  jwe:
+    secret-key: ${JWE_SECRET_KEY:12345678901234567890123456789012}
+    expiration-seconds: ${JWE_EXPIRATION_SECONDS:3600}
+    issuer: ${JWE_ISSUER:lib-validate-license}
+

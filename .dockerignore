@@ -1,0 +1,61 @@
+# Maven build output
+target/
+!target/lib-validate-license-*.jar
+
+# Maven wrapper
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (except CLAUDE.md which may be needed)
+README.md
+*.md
+!CLAUDE.md
+
+# Test files
+src/test/
+
+# Database files
+data/
+*.db
+*.mv.db
+*.trace.db
+
+# Logs
+logs/
+*.log
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
+# Other
+*.tmp
+*.bak
+*.swp
+*~

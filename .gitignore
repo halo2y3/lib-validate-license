@@ -1,0 +1,35 @@
+# Maven
+/target/
+*.jar
+*.war
+*.ear
+
+# H2 Database
+/data/
+*.db
+*.trace.db
+*.lock.db
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
