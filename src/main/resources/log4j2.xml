@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="info">
     <Properties>
-        <Property name="baseDir">/logs/lib-validate-license/</Property>
+        <Property name="baseDir">/app/logs</Property>
         <Property name="applicationName">lib-validate-license</Property>
         <Property name="LOG_PATTERN">[%tn,%tid] [%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}] [%p{lowerCase=false}] [%c{1.}] [%M]:   %m%n</Property>
     </Properties>

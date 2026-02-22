@@ -28,7 +28,7 @@ RUN groupadd -r spring && useradd -r -g spring spring
 COPY --from=builder /app/target/lib-validate-license-0.0.1-SNAPSHOT.jar app.jar
 
 # Create directories for H2 database and backups with proper permissions
-RUN mkdir -p /app/data /app/data/backups && chown -R spring:spring /app
+RUN mkdir -p /app/data /app/data/backups /app/logs && chown -R spring:spring /app
 
 # Switch to non-root user
 USER spring:spring
