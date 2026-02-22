@@ -42,6 +42,19 @@ mailersend:
     api-token: ${MAILERSEND_API_TOKEN:}
     api-url: ${MAILERSEND_API_URL:https://api.mailersend.com/v1/email}
 
+# Backup Configuration
+backup:
+    enabled: ${BACKUP_ENABLED:true}
+    run-on-startup: ${BACKUP_RUN_ON_STARTUP:true}
+    cron: ${BACKUP_CRON:0 0 1 * * ?}
+    local-dir: ${BACKUP_LOCAL_DIR:/app/data/backups}
+    max-files: ${BACKUP_MAX_FILES:7}
+    r2:
+        account-id: ${R2_ACCOUNT_ID:33e1f38a58d9da4e93f8e8114b4abe8a}
+        access-key-id: ${R2_ACCESS_KEY_ID:22f144e22613a6a5f47411df27fa711e}
+        secret-access-key: ${R2_SECRET_ACCESS_KEY:711b5099882f074af1711483cb7e8f8b403d02f31990945fec9328df8a2864e9}
+        bucket-name: ${R2_BUCKET_NAME:trading-ia}
+
 # Scheduler Configuration
 scheduler:
     expiration-warning:

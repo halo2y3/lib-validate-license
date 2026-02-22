@@ -30,6 +30,17 @@ mailersend:
   api-token: test-token
   api-url: https://api.mailersend.com/v1/email
 
+backup:
+  enabled: false
+  cron: "0 0 2 * * ?"
+  local-dir: /tmp/test-backups
+  max-files: 3
+  r2:
+    account-id: test-account
+    access-key-id: test-key
+    secret-access-key: test-secret
+    bucket-name: test-bucket
+
 scheduler:
   expiration-warning:
     enabled: false
