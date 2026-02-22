@@ -18,6 +18,7 @@ This is a Spring Boot 3.4.4 license validation library that provides REST API en
 - Log4j2 (custom logging configuration)
 - JaCoCo (code coverage)
 - MailerSend REST API (HTML email notifications)
+- AWS SDK v2 S3 (`software.amazon.awssdk:s3` BOM 2.26.26) — used for Cloudflare R2 backups
 
 ## Build and Development Commands
 
@@ -38,7 +39,7 @@ mvn clean test jacoco:report
 Coverage reports are generated in `target/site/jacoco/index.html`
 
 **Current Test Coverage: ~90%**
-- 42 tests (unit + integration)
+- 47 tests (unit + integration)
 - All tests passing successfully
 - Controllers: 100% coverage
 - Security layer: 97% coverage
@@ -123,6 +124,12 @@ The application implements a two-step license activation process (both require J
 - Handles validation errors, data access errors, and custom `ZMessManager` exceptions
 - Returns consistent `ExceptionResponse` format with timestamp, message, and details
 
+**Backup Layer** (`co.com.validate.license.config` / `co.com.validate.license.service`):
+- `BackupProperties`: `@ConfigurationProperties(prefix = "backup")` — enabled, cron, localDir, maxFiles, inner class `R2` (accountId, accessKeyId, secretAccessKey, bucketName)
+- `R2Config`: `@ConditionalOnProperty(backup.enabled=true)` — creates `S3Client` bean with Cloudflare R2 endpoint override (`https://<accountId>.r2.cloudflarestorage.com`) and static credentials
+- `BackupService`: Scheduled service (`@Scheduled`) that creates an H2 snapshot via `BACKUP TO`, uploads it to R2 with `putObject`, cleans old backups with `listObjectsV2` + `deleteObject` (keeps `maxFiles` most recent)
+- `BackupStartupRunner`: `@ConditionalOnProperty(backup.run-on-startup=true)` — executes `performBackup()` on application startup
+
 ### Configuration
 
 **Application Configuration** (`src/main/resources/application.yml`):
@@ -156,6 +163,21 @@ The application implements a two-step license activation process (both require J
   - `MAILERSEND_API_URL`: REST endpoint (default: `https://api.mailersend.com/v1/email`)
   - `EMAIL_FROM`: Sender address — must be a verified domain in MailerSend
   - `EMAIL_ENABLED`: Enable/disable email notifications (default: `true`)
+
+**Backup Configuration** (Cloudflare R2):
+- Backup activado/desactivado: `BACKUP_ENABLED` (default: `true`)
+- Ejecutar al iniciar: `BACKUP_RUN_ON_STARTUP` (default: `true`)
+- Programación: `BACKUP_CRON` — expresión cron (default: `0 0 2 * * ?` → diario a las 2 AM)
+- Directorio temporal local: `BACKUP_LOCAL_DIR` (default: `/app/data/backups`)
+- Máximo de backups a retener en R2: `BACKUP_MAX_FILES` (default: `7`)
+- Credenciales R2:
+  - `R2_ACCOUNT_ID`: Cloudflare Account ID (visible en la URL del dashboard)
+  - `R2_ACCESS_KEY_ID`: Access Key generada en R2 → Manage R2 API Tokens
+  - `R2_SECRET_ACCESS_KEY`: Secret correspondiente al Access Key
+  - `R2_BUCKET_NAME`: Nombre del bucket (default: `licenses-backup`)
+- El endpoint S3 se construye automáticamente: `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`
+- Los backups de R2 son **best-effort**: un fallo en la subida no interrumpe la operación
+- Nombre de archivo: `licenses-yyyyMMdd-HHmmss.zip` (snapshot H2 comprimido)
 
 ## JWE Token Usage Examples
 
@@ -203,6 +225,8 @@ curl -X POST http://localhost:8199/api/license/activate \
 - **Database**: H2 embedded database by default; supports migration to PostgreSQL/MySQL
 - **Lombok**: Extensive use of Lombok annotations (`@Getter`, `@Setter`, `@Slf4j`, `@Generated`)
 - **Email**: Non-blocking — email failures are logged but do not interrupt license operations
+- **Backup**: Non-blocking — R2 upload/cleanup failures are logged but do not interrupt the backup flow; the H2 snapshot is always attempted first
+- **Backup retention**: Only the `maxFiles` most recent backups are kept in R2; older ones are deleted automatically after each successful run
 
 ## Testing
 
@@ -214,6 +238,9 @@ curl -X POST http://localhost:8199/api/license/activate \
 - `AuthControllerTest`: Tests token generation endpoint
 - `LicenseRestControllerTest`: Tests license creation and activation endpoints
 - `EmailServiceTest`: Tests MailerSend REST calls using `@Mock(answer = Answers.RETURNS_DEEP_STUBS) RestClient`
+- `BackupServiceTest`: Tests backup scheduling with mocked `S3Client` and `JdbcTemplate`
+  - Uses `doAnswer` on `jdbcTemplate.execute` to create the backup file on disk (required for `RequestBody.fromFile`)
+  - Covers: disabled backup, successful upload, JDBC failure, R2 upload failure, old backup deletion
 
 **Integration Tests** (`src/test/java/integration/*Test.java`):
 - `LicenseIntegrationTest`: End-to-end tests covering complete workflows
@@ -229,6 +256,7 @@ curl -X POST http://localhost:8199/api/license/activate \
 - **JWE Secret**: Test secret key is exactly 32 characters for AES-256-GCM encryption
 - **Security**: Spring Security Test provides `@WithMockUser` for authenticated contexts
 - **MailerSend**: Test uses `api-token: test-token` — no real HTTP calls are made
+- **Backup**: Test profile sets `backup.enabled: false`; `BackupServiceTest` uses `@TempDir` and `@Mock S3Client` — no real R2 calls are made
 
 ### Running Specific Tests
 
