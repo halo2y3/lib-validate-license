@@ -8,7 +8,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate  # Use 'validate' in production, never 'update'
+      ddl-auto: update  # H2 embedded: 'update' creates schema on first run without dropping data
     show-sql: false
 
   # Disable H2 Console in production
