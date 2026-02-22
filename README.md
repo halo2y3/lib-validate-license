@@ -16,9 +16,10 @@ REST API service for managing and validating software licenses with hardware-bas
 - ⏰ **Expiration Management**: Configurable license validity periods
 - 🔒 **First-Use Activation**: License binds to hardware on first activation
 - ✅ **Validation**: Comprehensive license validation (existence, expiration, HWID match)
-- 📧 **Email Notifications**: Automatic email notifications when licenses are created
+- 📧 **Email Notifications**: Automatic email notifications via MailerSend REST API when licenses are created
 - ⏰ **Expiration Warnings**: Scheduled task sends email alerts 1 day before license expiration
-- 🧪 **Well Tested**: 90% code coverage with 42 unit and integration tests
+- 💾 **Automatic Backups**: Scheduled H2 database backups uploaded to Cloudflare R2
+- 🧪 **Well Tested**: 90% code coverage with 47 unit and integration tests
 
 ## Quick Start
 
@@ -57,30 +58,17 @@ The application uses **H2 embedded database** by default:
 
 ### Configuration
 
-The application is pre-configured with H2 embedded database. For custom configuration:
+The application is configured via environment variables. Copy `.env.example` to `.env` and fill in your values:
 
-```yaml
-security:
-  jwe:
-    secret-key: ${JWE_SECRET_KEY}  # Must be exactly 32 characters
-    expiration-seconds: 3600
-    issuer: lib-validate-license
-
-spring:
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-
-email:
-  from: ${EMAIL_FROM:noreply@license-service.com}
-  enabled: ${EMAIL_ENABLED:true}
+```bash
+cp .env.example .env
 ```
 
 **⚠️ Important**:
-- Set `JWE_SECRET_KEY` environment variable with a 32-character secret key for production
-- Configure email settings (`MAIL_USERNAME`, `MAIL_PASSWORD`) to enable email notifications
+- Set `JWE_SECRET_KEY` with a minimum 32-character secret key for production
+- Set `MAILERSEND_API_TOKEN` with a valid MailerSend API token to enable email notifications
+- Set Cloudflare R2 credentials (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) to enable backups
+- Disable H2 console in production: `H2_CONSOLE_ENABLED=false`
 
 ## API Usage
 
@@ -181,68 +169,74 @@ Authorization: Bearer <jwe-token>
 
 ## Email Configuration
 
-The service sends automatic email notifications when licenses are created.
+The service sends automatic HTML email notifications via the **MailerSend REST API** (no SMTP).
 
-### SMTP Configuration
+### MailerSend Setup
 
-Configure the following environment variables for email functionality:
+1. Create an account at [mailersend.com](https://www.mailersend.com)
+2. Verify your sending domain
+3. Generate an API token in **Email → API Tokens**
+4. Set the environment variables:
 
 ```bash
-# Gmail Example
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-app-password
-EMAIL_FROM=noreply@license-service.com
+MAILERSEND_API_TOKEN=mlsn.your-token-here
+MAILERSEND_API_URL=https://api.mailersend.com/v1/email   # default, can be omitted
+EMAIL_FROM=noreply@yourdomain.com   # must be a verified domain in MailerSend
 EMAIL_ENABLED=true
 ```
 
-### Gmail Setup
-
-For Gmail, you need to:
-1. Enable 2-factor authentication
-2. Generate an App Password (not your regular password)
-3. Use the App Password in `MAIL_PASSWORD`
-
-### Other SMTP Providers
-
-**Office 365/Outlook**:
-```bash
-MAIL_HOST=smtp.office365.com
-MAIL_PORT=587
-```
-
-**AWS SES**:
-```bash
-MAIL_HOST=email-smtp.us-east-1.amazonaws.com
-MAIL_PORT=587
-```
-
-**SendGrid**:
-```bash
-MAIL_HOST=smtp.sendgrid.net
-MAIL_PORT=587
-MAIL_USERNAME=apikey
-MAIL_PASSWORD=your-sendgrid-api-key
-```
-
 ### Disable Email Notifications
-
-To disable email notifications (e.g., in development):
 
 ```bash
 EMAIL_ENABLED=false
 ```
 
-### Email Template
+### Email Templates
 
-The system sends a plain-text email with:
-- License key
-- Expiration date
-- Activation instructions
-- Security reminders
+HTML templates located in `src/main/resources/templates/`:
+- `LicenseCreate.html` — sent on license creation
+- `LicenseExpiration.html` — sent as expiration warning
 
-Email failures do not block license creation - errors are logged but the license is still saved to the database.
+Email failures are non-blocking: errors are logged but do not interrupt license operations or backup execution.
+
+## Backup Configuration
+
+The service automatically backs up the H2 database to **Cloudflare R2** on a configurable schedule.
+
+### Cloudflare R2 Setup
+
+1. Create a bucket in your Cloudflare R2 dashboard
+2. Generate an API token in **R2 → Manage R2 API Tokens**
+3. Set the environment variables:
+
+```bash
+BACKUP_ENABLED=true
+BACKUP_RUN_ON_STARTUP=true        # run a backup immediately on startup
+BACKUP_CRON=0 0 1 * * ?           # daily at 1:00 AM (Spring cron format)
+BACKUP_LOCAL_DIR=/app/data/backups
+BACKUP_MAX_FILES=7                # number of backups to retain in R2
+
+# Cloudflare R2 Credentials
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key-id
+R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+R2_BUCKET_NAME=licenses-backup
+```
+
+The R2 endpoint is built automatically: `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`
+
+### Backup Behavior
+
+- Backup file name: `licenses-yyyyMMdd-HHmmss.zip` (compressed H2 snapshot)
+- Only the `BACKUP_MAX_FILES` most recent backups are kept in R2; older ones are deleted automatically
+- Backup failures (R2 upload/cleanup) are non-blocking: errors are logged but do not stop the application
+- H2 snapshot is always attempted first before uploading to R2
+
+### Disable Backups
+
+```bash
+BACKUP_ENABLED=false
+```
 
 ## Scheduled Tasks
 
@@ -355,7 +349,7 @@ Coverage report available at: `target/site/jacoco/index.html`
 - **Security Layer**: 97%
 - **Services**: 100%
 - **Models**: 94%
-- **Total Tests**: 42 (unit + integration)
+- **Total Tests**: 47 (unit + integration)
 
 ### Project Structure
 
@@ -372,8 +366,14 @@ src/
 │   │   │   ├── JweAuthenticationFilter.java
 │   │   │   ├── JweAuthenticationEntryPoint.java
 │   │   │   └── SecurityConfig.java
+│   │   ├── config/              # Infrastructure configuration
+│   │   │   ├── MailerSendConfig.java
+│   │   │   ├── R2Config.java
+│   │   │   └── BackupProperties.java
 │   │   ├── service/             # Business services
 │   │   │   ├── EmailService.java
+│   │   │   ├── BackupService.java
+│   │   │   ├── BackupStartupRunner.java
 │   │   │   └── LicenseExpirationScheduler.java
 │   │   ├── model/               # Data models
 │   │   │   ├── License.java
@@ -404,13 +404,14 @@ src/
 - **Spring Boot**: 3.4.4
 - **Spring Security**: 6.4.x — JWE-based authentication
 - **Spring Data JPA**: Database access
-- **Spring Boot Mail**: Email notifications
+- **MailerSend REST API**: HTML email notifications (via `RestClient`)
+- **AWS SDK v2 S3**: 2.26.26 — Cloudflare R2 backup integration
 - **Nimbus JOSE+JWT**: 9.48 (JWE encryption)
 - **Lombok**: 1.18.42 — Boilerplate reduction
 - **Log4j2**: Logging
 - **JaCoCo**: 0.8.14 — Code coverage
 - **JUnit 5**: Testing framework
-- **H2 Database**: In-memory database (for testing)
+- **H2 Database**: Embedded file-based database (in-memory for tests)
 - **Maven**: Build tool
 
 ## Error Handling
@@ -449,12 +450,14 @@ java -jar target/lib-validate-license-0.0.1-SNAPSHOT.jar \
 
 ### Production Checklist
 
-- [ ] Set secure `JWE_SECRET_KEY` (32 characters)
+- [ ] Set secure `JWE_SECRET_KEY` (minimum 32 characters for AES-256-GCM)
 - [ ] Configure production database (PostgreSQL/MySQL recommended)
-- [ ] **Disable H2 console** (set `H2_CONSOLE_ENABLED=false`)
-- [ ] **Configure email settings** (SMTP host, username, password)
-- [ ] Set appropriate `EMAIL_FROM` address
+- [ ] **Disable H2 console** (`H2_CONSOLE_ENABLED=false`)
+- [ ] **Configure MailerSend** (`MAILERSEND_API_TOKEN`, `EMAIL_FROM` with verified domain)
 - [ ] Test email delivery in production environment
+- [ ] **Configure Cloudflare R2 backup** (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`)
+- [ ] Verify backup execution on startup (`BACKUP_RUN_ON_STARTUP=true`)
+- [ ] Set appropriate backup schedule (`BACKUP_CRON`) and retention (`BACKUP_MAX_FILES`)
 - [ ] **Configure scheduler** (set appropriate cron expression for timezone)
 - [ ] Verify scheduled task execution in production
 - [ ] Use `--spring.profiles.active=prod` profile
@@ -462,9 +465,8 @@ java -jar target/lib-validate-license-0.0.1-SNAPSHOT.jar \
 - [ ] Restrict CORS origins in `SecurityConfig`
 - [ ] Configure proper logging levels
 - [ ] Set up monitoring and health checks
-- [ ] Review and adjust token expiration time
+- [ ] Review and adjust token expiration time (`JWE_EXPIRATION_SECONDS`)
 - [ ] Secure `/api/auth/token` endpoint (if needed)
-- [ ] Set up automated database backups
 
 ## License Workflow
 
