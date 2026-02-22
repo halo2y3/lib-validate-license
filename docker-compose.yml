@@ -21,13 +21,34 @@ services:
       # H2 Database configuration
       - H2_CONSOLE_ENABLED=false
 
-      # Optional: JVM memory settings
-      - JAVA_OPTS=-Xmx512m -Xms256m
+      # Email configuration (MailerSend REST API)
+      - MAILERSEND_API_TOKEN=
+      - MAILERSEND_API_URL=https://api.mailersend.com/v1/email
+      - EMAIL_FROM=
+      - EMAIL_ENABLED=true
+
+      # Scheduler configuration
+      - SCHEDULER_ENABLED=true
+      - SCHEDULER_CRON=0 0 9 * * ?
+
+      # Backup configuration (Cloudflare R2)
+      - BACKUP_ENABLED=true
+      - BACKUP_RUN_ON_STARTUP=true
+      - BACKUP_CRON=0 0 1 * * ?
+      - BACKUP_LOCAL_DIR=/app/data/backups
+      - BACKUP_MAX_FILES=7
+      - R2_ACCOUNT_ID=
+      - R2_ACCESS_KEY_ID=
+      - R2_SECRET_ACCESS_KEY=
+      - R2_BUCKET_NAME=licenses-backup
+
     volumes:
       # Persist H2 database data
       - license-data:/app/data
+      # Persist local backup files
+      - license-backups:/app/data/backups
       # Optional: external log directory
-      - ./logs:/app/logs
+      - ./logs:/logs/lib-validate-license
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8199/actuator/health"]
@@ -40,6 +61,8 @@ services:
 
 volumes:
   license-data:
+    driver: local
+  license-backups:
     driver: local
 
 networks:

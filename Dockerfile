@@ -27,8 +27,8 @@ RUN groupadd -r spring && useradd -r -g spring spring
 # Copy the built JAR from builder stage
 COPY --from=builder /app/target/lib-validate-license-0.0.1-SNAPSHOT.jar app.jar
 
-# Create directory for H2 database with proper permissions
-RUN mkdir -p /app/data && chown -R spring:spring /app
+# Create directories for H2 database and backups with proper permissions
+RUN mkdir -p /app/data /app/data/backups && chown -R spring:spring /app
 
 # Switch to non-root user
 USER spring:spring
@@ -48,7 +48,16 @@ ENV SERVER_PORT=8199 \
     MAILERSEND_API_TOKEN="" \
     MAILERSEND_API_URL=https://api.mailersend.com/v1/email \
     SCHEDULER_ENABLED=true \
-    SCHEDULER_CRON="0 0 9 * * ?"
+    SCHEDULER_CRON="0 0 9 * * ?" \
+    BACKUP_ENABLED=true \
+    BACKUP_RUN_ON_STARTUP=true \
+    BACKUP_CRON="0 0 1 * * ?" \
+    BACKUP_LOCAL_DIR=/app/data/backups \
+    BACKUP_MAX_FILES=7 \
+    R2_ACCOUNT_ID="" \
+    R2_ACCESS_KEY_ID="" \
+    R2_SECRET_ACCESS_KEY="" \
+    R2_BUCKET_NAME=licenses-backup
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
