@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -39,6 +40,7 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
 
     private final ConcurrentHashMap<Long, BotSession> sessions = new ConcurrentHashMap<>();
 
+    @Autowired
     public TelegramBotService(TelegramBotProperties botProperties,
                                TelegramAuthorizedUserRepository authorizedUserRepository,
                                LicenseRepository licenseRepository,
