@@ -230,22 +230,24 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
 
         session.setEmail(text);
         session.setEstado(BotSession.Estado.ESPERANDO_VALID_DAYS);
-        sendMessage(chatId, "✅ Email aceptado.\n📅 ¿Cuántos días de validez tendrá la licencia? (mínimo 1):");
+        sendMessage(chatId, "✅ Email aceptado.\n📅 ¿Cuántos meses tendrá la licencia? (1 a 12):");
     }
 
     private void handleValidDaysInput(Long chatId, String text, BotSession session) {
-        int days;
+        int months;
         try {
-            days = Integer.parseInt(text.trim());
+            months = Integer.parseInt(text.trim());
         } catch (NumberFormatException e) {
             sendMessage(chatId, "❌ Por favor ingresa un número entero válido:");
             return;
         }
 
-        if (days < 1) {
-            sendMessage(chatId, "⚠️ El número de días debe ser al menos 1. Intenta de nuevo:");
+        if (months < 1 || months > 12) {
+            sendMessage(chatId, "⚠️ El número de meses debe estar entre 1 y 12. Intenta de nuevo:");
             return;
         }
+
+        int days = months * 30;
 
         License license = new License();
         license.setLicenseKey(session.getLicenseKey());

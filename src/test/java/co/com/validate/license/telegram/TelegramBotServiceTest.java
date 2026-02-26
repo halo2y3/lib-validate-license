@@ -37,9 +37,9 @@ import co.com.validate.license.telegram.service.TelegramBotService;
  * Uses reflection to invoke the package-private testing constructor.
  *
  * Flujo /crear (sin ingreso manual de clave):
- *   /crear → msg[0]: "📧 Ingresa el email del cliente:"
- *   email  → msg[1]: "✅ Email aceptado.\n📅 ¿Cuántos días..."
- *   días   → msg[2]: "🎉 ¡Licencia creada exitosamente!\n\n🔑 Clave: {UUID}\n..."
+ *   /crear  → msg[0]: "📧 Ingresa el email del cliente:"
+ *   email   → msg[1]: "✅ Email aceptado.\n📅 ¿Cuántos meses..."
+ *   meses   → msg[2]: "🎉 ¡Licencia creada exitosamente!\n\n🔑 Clave: {UUID}\n..."
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -178,11 +178,11 @@ class TelegramBotServiceTest {
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "user@example.com"));
 
         assertEquals(2, sentMessages.size());
-        assert sentMessages.get(1).contains("días");
+        assert sentMessages.get(1).contains("meses");
         verify(licenseRepository, never()).save(any());
     }
 
-    // ---------- Valid days: zero → stays in ESPERANDO_VALID_DAYS ----------
+    // ---------- Valid months: zero → stays in ESPERANDO_VALID_DAYS ----------
 
     @Test
     void testValidDays_cero_permaneceEnEsperandoValidDays() {
@@ -193,7 +193,7 @@ class TelegramBotServiceTest {
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "0"));
 
         assertEquals(3, sentMessages.size());
-        assert sentMessages.get(2).contains("al menos 1");
+        assert sentMessages.get(2).contains("entre 1 y 12");
         verify(licenseRepository, never()).save(any());
     }
 
@@ -220,7 +220,7 @@ class TelegramBotServiceTest {
 
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "/crear"));
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "user@example.com"));
-        botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "30"));
+        botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "1"));
 
         // Capturar la licencia guardada para obtener la clave generada
         var captor = org.mockito.ArgumentCaptor.forClass(co.com.validate.license.model.License.class);
