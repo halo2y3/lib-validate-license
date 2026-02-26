@@ -57,7 +57,11 @@ ENV SERVER_PORT=8199 \
     R2_ACCOUNT_ID="" \
     R2_ACCESS_KEY_ID="" \
     R2_SECRET_ACCESS_KEY="" \
-    R2_BUCKET_NAME=licenses-backup
+    R2_BUCKET_NAME=licenses-backup \
+    TELEGRAM_BOT_ENABLED=false \
+    TELEGRAM_BOT_TOKEN="" \
+    TELEGRAM_BOT_USERNAME="" \
+    TELEGRAM_ADMIN_CHAT_ID=0
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

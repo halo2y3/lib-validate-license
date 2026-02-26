@@ -44,3 +44,7 @@ backup:
 scheduler:
   expiration-warning:
     enabled: false
+
+telegram:
+  bot:
+    enabled: false

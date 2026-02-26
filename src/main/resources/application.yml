@@ -67,3 +67,11 @@ security:
     expiration-seconds: ${JWE_EXPIRATION_SECONDS:3600}
     issuer: ${JWE_ISSUER:lib-validate-license}
 
+# Telegram Bot Configuration
+telegram:
+  bot:
+    enabled: ${TELEGRAM_BOT_ENABLED:false}
+    token: ${TELEGRAM_BOT_TOKEN:}
+    username: ${TELEGRAM_BOT_USERNAME:}
+    admin-chat-id: ${TELEGRAM_ADMIN_CHAT_ID:0}
+
