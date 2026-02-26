@@ -116,75 +116,75 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
             case "/usuarios" -> handleUsuarios(chatId);
             case "/agregar" -> handleAgregar(chatId, session);
             case "/eliminar" -> handleEliminar(chatId, session);
-            default -> sendMessage(chatId, "Comando no reconocido. Usa /ayuda para ver los comandos disponibles.");
+            default -> sendMessage(chatId, "❓ Comando no reconocido. Usa /ayuda para ver los comandos disponibles.");
         }
     }
 
     private void handleStart(Long chatId) {
         boolean authorized = isAuthorized(chatId);
         String status = authorized
-                ? "Estás autorizado para crear licencias."
-                : "No estás autorizado. Contacta al administrador.";
-        sendMessage(chatId, "Bienvenido al Bot de Licencias.\n" + status);
+                ? "✅ Estás autorizado para crear licencias."
+                : "🚫 No estás autorizado. Contacta al administrador.";
+        sendMessage(chatId, "👋 ¡Bienvenido al Bot de Licencias!\n" + status);
     }
 
     private void handleAyuda(Long chatId) {
-        StringBuilder sb = new StringBuilder("Comandos disponibles:\n");
-        sb.append("/start - Bienvenida\n");
-        sb.append("/ayuda - Mostrar esta ayuda\n");
-        sb.append("/miinfo - Ver tu chatId\n");
+        StringBuilder sb = new StringBuilder("📋 Comandos disponibles:\n\n");
+        sb.append("👋 /start — Bienvenida\n");
+        sb.append("❓ /ayuda — Mostrar esta ayuda\n");
+        sb.append("🪪 /miinfo — Ver tu chatId\n");
 
         if (isAuthorized(chatId)) {
-            sb.append("/crear - Crear una licencia nueva\n");
-            sb.append("/cancelar - Cancelar la operación en curso\n");
+            sb.append("🔑 /crear — Crear una licencia nueva\n");
+            sb.append("❌ /cancelar — Cancelar la operación en curso\n");
         }
 
         if (isAdmin(chatId)) {
-            sb.append("/usuarios - Listar usuarios autorizados\n");
-            sb.append("/agregar - Autorizar un nuevo usuario\n");
-            sb.append("/eliminar - Desautorizar un usuario\n");
+            sb.append("👥 /usuarios — Listar usuarios autorizados\n");
+            sb.append("➕ /agregar — Autorizar un nuevo usuario\n");
+            sb.append("🗑 /eliminar — Desautorizar un usuario\n");
         }
 
         sendMessage(chatId, sb.toString());
     }
 
     private void handleMiInfo(Long chatId) {
-        sendMessage(chatId, "Tu chatId es: " + chatId);
+        sendMessage(chatId, "🪪 Tu chatId es: " + chatId);
     }
 
     private void handleCrear(Long chatId, BotSession session) {
         if (!isAuthorized(chatId)) {
-            sendMessage(chatId, "No estás autorizado para crear licencias.");
+            sendMessage(chatId, "🚫 No estás autorizado para crear licencias.");
             return;
         }
         String generatedKey = UUID.randomUUID().toString().toUpperCase();
         session.setLicenseKey(generatedKey);
         session.setEstado(BotSession.Estado.ESPERANDO_EMAIL);
-        sendMessage(chatId, "Clave generada: " + generatedKey + "\nIngresa el email del cliente:");
+        sendMessage(chatId, "📧 Ingresa el email del cliente:");
     }
 
     private void handleCancelar(Long chatId, BotSession session) {
         session.setEstado(BotSession.Estado.IDLE);
         session.setLicenseKey(null);
         session.setEmail(null);
-        sendMessage(chatId, "Operación cancelada.");
+        sendMessage(chatId, "❌ Operación cancelada.");
     }
 
     private void handleUsuarios(Long chatId) {
         if (!isAdmin(chatId)) {
-            sendMessage(chatId, "No tienes permisos para este comando.");
+            sendMessage(chatId, "🚫 No tienes permisos para este comando.");
             return;
         }
 
         List<TelegramAuthorizedUser> users = authorizedUserRepository.findAll();
         if (users.isEmpty()) {
-            sendMessage(chatId, "No hay usuarios autorizados.");
+            sendMessage(chatId, "👥 No hay usuarios autorizados.");
             return;
         }
 
-        StringBuilder sb = new StringBuilder("Usuarios autorizados:\n");
+        StringBuilder sb = new StringBuilder("👥 Usuarios autorizados:\n\n");
         for (TelegramAuthorizedUser user : users) {
-            sb.append("- ChatId: ").append(user.getChatId());
+            sb.append("• ChatId: ").append(user.getChatId());
             if (user.getUsername() != null) {
                 sb.append(" (@").append(user.getUsername()).append(")");
             }
@@ -196,20 +196,20 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
 
     private void handleAgregar(Long chatId, BotSession session) {
         if (!isAdmin(chatId)) {
-            sendMessage(chatId, "No tienes permisos para este comando.");
+            sendMessage(chatId, "🚫 No tienes permisos para este comando.");
             return;
         }
         session.setEstado(BotSession.Estado.ESPERANDO_CHAT_ID_AGREGAR);
-        sendMessage(chatId, "Ingresa el chatId del usuario a autorizar:");
+        sendMessage(chatId, "➕ Ingresa el chatId del usuario a autorizar:");
     }
 
     private void handleEliminar(Long chatId, BotSession session) {
         if (!isAdmin(chatId)) {
-            sendMessage(chatId, "No tienes permisos para este comando.");
+            sendMessage(chatId, "🚫 No tienes permisos para este comando.");
             return;
         }
         session.setEstado(BotSession.Estado.ESPERANDO_CHAT_ID_ELIMINAR);
-        sendMessage(chatId, "Ingresa el chatId del usuario a desautorizar:");
+        sendMessage(chatId, "➖ Ingresa el chatId del usuario a desautorizar:");
     }
 
     private void handleInput(Long chatId, String text, BotSession session) {
@@ -218,19 +218,19 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
             case ESPERANDO_VALID_DAYS -> handleValidDaysInput(chatId, text, session);
             case ESPERANDO_CHAT_ID_AGREGAR -> handleChatIdAgregar(chatId, text, session);
             case ESPERANDO_CHAT_ID_ELIMINAR -> handleChatIdEliminar(chatId, text, session);
-            default -> sendMessage(chatId, "Usa /ayuda para ver los comandos disponibles.");
+            default -> sendMessage(chatId, "❓ Usa /ayuda para ver los comandos disponibles.");
         }
     }
 
     private void handleEmailInput(Long chatId, String text, BotSession session) {
         if (!text.matches("^[^@]+@[^@]+\\.[^@]+$")) {
-            sendMessage(chatId, "Email inválido. Ingresa un email válido:");
+            sendMessage(chatId, "❌ Email inválido. Ingresa un email válido:");
             return;
         }
 
         session.setEmail(text);
         session.setEstado(BotSession.Estado.ESPERANDO_VALID_DAYS);
-        sendMessage(chatId, "Email aceptado. ¿Cuántos días de validez tendrá la licencia? (mínimo 1):");
+        sendMessage(chatId, "✅ Email aceptado.\n📅 ¿Cuántos días de validez tendrá la licencia? (mínimo 1):");
     }
 
     private void handleValidDaysInput(Long chatId, String text, BotSession session) {
@@ -238,12 +238,12 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
         try {
             days = Integer.parseInt(text.trim());
         } catch (NumberFormatException e) {
-            sendMessage(chatId, "Por favor ingresa un número entero válido:");
+            sendMessage(chatId, "❌ Por favor ingresa un número entero válido:");
             return;
         }
 
         if (days < 1) {
-            sendMessage(chatId, "El número de días debe ser al menos 1. Intenta de nuevo:");
+            sendMessage(chatId, "⚠️ El número de días debe ser al menos 1. Intenta de nuevo:");
             return;
         }
 
@@ -262,7 +262,7 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
         );
 
         String successMsg = String.format(
-                "Licencia creada exitosamente:\nClave: %s\nEmail: %s\nVálida hasta: %s",
+                "🎉 ¡Licencia creada exitosamente!\n\n🔑 Clave: %s\n📧 Email: %s\n📅 Válida hasta: %s",
                 license.getLicenseKey(),
                 license.getEmail(),
                 license.getExpirationDate()
@@ -280,12 +280,12 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
         try {
             targetChatId = Long.parseLong(text.trim());
         } catch (NumberFormatException e) {
-            sendMessage(chatId, "Por favor ingresa un chatId válido (número entero):");
+            sendMessage(chatId, "❌ Por favor ingresa un chatId válido (número entero):");
             return;
         }
 
         if (authorizedUserRepository.existsByChatId(targetChatId)) {
-            sendMessage(chatId, "Ese usuario ya está autorizado.");
+            sendMessage(chatId, "⚠️ Ese usuario ya está autorizado.");
             session.setEstado(BotSession.Estado.IDLE);
             return;
         }
@@ -297,7 +297,7 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
 
         authorizedUserRepository.save(user);
 
-        sendMessage(chatId, "Usuario " + targetChatId + " autorizado exitosamente.");
+        sendMessage(chatId, "✅ Usuario " + targetChatId + " autorizado exitosamente.");
         session.setEstado(BotSession.Estado.IDLE);
     }
 
@@ -306,19 +306,19 @@ public class TelegramBotService implements SpringLongPollingBot, LongPollingSing
         try {
             targetChatId = Long.parseLong(text.trim());
         } catch (NumberFormatException e) {
-            sendMessage(chatId, "Por favor ingresa un chatId válido (número entero):");
+            sendMessage(chatId, "❌ Por favor ingresa un chatId válido (número entero):");
             return;
         }
 
         if (!authorizedUserRepository.existsByChatId(targetChatId)) {
-            sendMessage(chatId, "Ese usuario no está en la lista de autorizados.");
+            sendMessage(chatId, "⚠️ Ese usuario no está en la lista de autorizados.");
             session.setEstado(BotSession.Estado.IDLE);
             return;
         }
 
         authorizedUserRepository.deleteByChatId(targetChatId);
 
-        sendMessage(chatId, "Usuario " + targetChatId + " desautorizado exitosamente.");
+        sendMessage(chatId, "🗑 Usuario " + targetChatId + " desautorizado exitosamente.");
         session.setEstado(BotSession.Estado.IDLE);
     }
 

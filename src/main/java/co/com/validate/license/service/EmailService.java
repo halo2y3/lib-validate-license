@@ -44,7 +44,7 @@ public class EmailService {
         }
 
         try {
-            String htmlContent = buildEmailContent(licenseKey, expirationDate);
+            String htmlContent = buildEmailContent(email, licenseKey, expirationDate);
             Map<String, Object> payload = buildPayload(email, "License Created Successfully - " + licenseKey, htmlContent);
 
             mailerSendRestClient.post().body(payload).retrieve().toBodilessEntity();
@@ -69,7 +69,7 @@ public class EmailService {
         }
 
         try {
-            String htmlContent = buildExpirationWarningContent(licenseKey, expirationDate);
+            String htmlContent = buildExpirationWarningContent(email, licenseKey, expirationDate);
             Map<String, Object> payload = buildPayload(email, "License Expiration Warning - " + licenseKey, htmlContent);
 
             mailerSendRestClient.post().body(payload).retrieve().toBodilessEntity();
@@ -88,7 +88,7 @@ public class EmailService {
         );
     }
 
-    private String buildEmailContent(String licenseKey, LocalDate expirationDate) {
+    private String buildEmailContent(String email, String licenseKey, LocalDate expirationDate) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         try {
@@ -97,6 +97,7 @@ public class EmailService {
             String htmlTemplate = new String(bytes, StandardCharsets.UTF_8);
 
             return htmlTemplate
+                    .replace("#EMAIL_ADDRESS", email)
                     .replace("#LICENSE_NUMBER", licenseKey)
                     .replace("#EXPIRATION_DATE", expirationDate.format(formatter));
         } catch (IOException e) {
@@ -104,7 +105,7 @@ public class EmailService {
         }
     }
 
-    private String buildExpirationWarningContent(String licenseKey, LocalDate expirationDate) {
+    private String buildExpirationWarningContent(String email, String licenseKey, LocalDate expirationDate) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         try {
@@ -113,6 +114,7 @@ public class EmailService {
             String htmlTemplate = new String(bytes, StandardCharsets.UTF_8);
 
             return htmlTemplate
+                    .replace("#EMAIL_ADDRESS", email)
                     .replace("#LICENSE_NUMBER", licenseKey)
                     .replace("#EXPIRATION_DATE", expirationDate.format(formatter));
         } catch (IOException e) {

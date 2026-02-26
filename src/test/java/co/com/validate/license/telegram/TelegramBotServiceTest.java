@@ -37,9 +37,9 @@ import co.com.validate.license.telegram.service.TelegramBotService;
  * Uses reflection to invoke the package-private testing constructor.
  *
  * Flujo /crear (sin ingreso manual de clave):
- *   /crear → msg[0]: "Clave generada: {UUID}\nIngresa el email..."
- *   email  → msg[1]: "Email aceptado. ¿Cuántos días..."
- *   días   → msg[2]: "Licencia creada exitosamente:..."
+ *   /crear → msg[0]: "📧 Ingresa el email del cliente:"
+ *   email  → msg[1]: "✅ Email aceptado.\n📅 ¿Cuántos días..."
+ *   días   → msg[2]: "🎉 ¡Licencia creada exitosamente!\n\n🔑 Clave: {UUID}\n..."
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -113,7 +113,7 @@ class TelegramBotServiceTest {
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "/miinfo"));
 
         assertEquals(1, sentMessages.size());
-        assertEquals("Tu chatId es: " + AUTHORIZED_CHAT_ID, sentMessages.get(0));
+        assertEquals("🪪 Tu chatId es: " + AUTHORIZED_CHAT_ID, sentMessages.get(0));
     }
 
     // ---------- /crear — unauthorized ----------
@@ -139,8 +139,8 @@ class TelegramBotServiceTest {
 
         assertEquals(1, sentMessages.size());
         String msg = sentMessages.get(0);
-        assert msg.contains("Clave generada:") : "Debe mostrar la clave generada";
-        assert msg.contains("email") : "Debe pedir el email en el mismo mensaje";
+        assert !msg.contains("Clave") : "No debe mostrar la clave antes de crear la licencia";
+        assert msg.contains("email") : "Debe pedir el email";
     }
 
     @Test
@@ -148,8 +148,9 @@ class TelegramBotServiceTest {
         botService.consume(buildUpdate(ADMIN_CHAT_ID, "/crear"));
 
         assertEquals(1, sentMessages.size());
-        assert sentMessages.get(0).contains("Clave generada:");
+        assert !sentMessages.get(0).contains("Clave generada:");
         assertFalse(sentMessages.get(0).contains("No estás autorizado"));
+        assert sentMessages.get(0).contains("email");
     }
 
     // ---------- Email: invalid → stays in ESPERANDO_EMAIL ----------
@@ -218,17 +219,14 @@ class TelegramBotServiceTest {
         when(authorizedUserRepository.existsByChatId(AUTHORIZED_CHAT_ID)).thenReturn(true);
 
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "/crear"));
-
-        // Extraer la clave generada del primer mensaje
-        String creacionMsg = sentMessages.get(0);
-        String generatedKey = creacionMsg.split("\n")[0].replace("Clave generada: ", "").trim();
-
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "user@example.com"));
         botService.consume(buildUpdate(AUTHORIZED_CHAT_ID, "30"));
 
-        // Verificar que se guardó con la clave generada y el email correcto
-        verify(licenseRepository).save(argThat(l ->
-                generatedKey.equals(l.getLicenseKey()) && "user@example.com".equals(l.getEmail())));
+        // Capturar la licencia guardada para obtener la clave generada
+        var captor = org.mockito.ArgumentCaptor.forClass(co.com.validate.license.model.License.class);
+        verify(licenseRepository).save(captor.capture());
+        String generatedKey = captor.getValue().getLicenseKey();
+        assertEquals("user@example.com", captor.getValue().getEmail());
 
         // Verificar que se envió el email con la clave generada
         verify(emailService).sendLicenseCreationEmail(
@@ -237,7 +235,11 @@ class TelegramBotServiceTest {
                 any());
 
         assertEquals(3, sentMessages.size());
+        // La clave NO aparece en el primer mensaje
+        assert !sentMessages.get(0).contains(generatedKey) : "La clave no debe mostrarse al inicio";
+        // La clave SÍ aparece solo en el mensaje final
         assert sentMessages.get(2).contains("exitosamente");
+        assert sentMessages.get(2).contains(generatedKey) : "La clave debe mostrarse en el mensaje final";
     }
 
     // ---------- /cancelar ----------
